@@ -7,7 +7,7 @@
   <properties>
 		<feign.version>10.0.1</feign.version>
 	</properties>
-    <!-- feign -->
+    <!-- openFeign -->
 		<dependency>
 			<groupId>io.github.openfeign</groupId>
 			<artifactId>feign-core</artifactId>
