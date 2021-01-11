@@ -35,7 +35,12 @@ public class CustomEncoder implements Encoder {
             RecipeSynIn<?> recipeSynIn = (RecipeSynIn<?>) object;
             setHeadCommonInfo(recipeSynIn.getMsg());
         }
-            template.body(JSON.toJSONString(object));
+        // 特殊请求
+        if (object instanceof BaseIn.Head) {
+            BaseIn.Head head = (BaseIn.Head) object;
+            setHeadCommonInfo(head);
+        }
+        template.body(JSON.toJSONString(object));
     }
 
     /**
@@ -46,8 +51,11 @@ public class CustomEncoder implements Encoder {
         if(baseIn.getHead() == null){
             baseIn.setHead(new BaseIn.Head());
         }
-        baseIn.getHead().setAccessToken(CaUtils.getAccessToken(caConfig));
-        baseIn.getHead().setClientId(caConfig.getClientId());
+        setHeadCommonInfo(baseIn.getHead());
+    }
+    private void setHeadCommonInfo(BaseIn.Head head){
+        head.setAccessToken(CaUtils.getAccessToken(caConfig));
+        head.setClientId(caConfig.getClientId());
     }
 
 

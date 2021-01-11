@@ -17,7 +17,8 @@ package com.wjj.application.facade.ca.casdk.common.code;
  */
 public enum ResCode {
     SUCCESS("0","success"),
-    fail("500","fail"),
+    FAIL("500","fail"),
+    ACCESS_TOKEN_ERROR("005x019","accessToken不匹配，请重新进行授权"),
     ;
 
     // ca返回的状态码,错误码

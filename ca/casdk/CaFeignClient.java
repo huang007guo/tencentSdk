@@ -1,12 +1,8 @@
 package com.wjj.application.facade.ca.casdk;
 
-import com.wjj.application.facade.ca.casdk.vo.in.BaseIn;
-import com.wjj.application.facade.ca.casdk.vo.in.DoctorSynIn;
-import com.wjj.application.facade.ca.casdk.vo.in.SelfSignGetGrantResultIn;
+import com.wjj.application.facade.ca.casdk.vo.in.*;
 import com.wjj.application.facade.ca.casdk.vo.in.recipesyn.RecipeSynIn;
-import com.wjj.application.facade.ca.casdk.vo.out.DoctorSynOut;
-import com.wjj.application.facade.ca.casdk.vo.out.RecipeSynOut;
-import com.wjj.application.facade.ca.casdk.vo.out.SelfSignGetGrantResultOut;
+import com.wjj.application.facade.ca.casdk.vo.out.*;
 import feign.Headers;
 import feign.RequestLine;
 
@@ -75,6 +71,24 @@ public interface CaFeignClient {
     @RequestLine("POST /am/v2/selfSign/getGrantResult")
     SelfSignGetGrantResultOut selfSignGetGrantResult(
             BaseIn<SelfSignGetGrantResultIn> doctorSyn
+    );
+    /**
+     * 	医师状态查询接口
+     * @param doctorGetUserStatusIn
+     * @return
+     */
+    @RequestLine("POST /am/v2/doctor/getUserStatus")
+    DoctorGetUserStatusOut doctorGetUserStatus(
+            DoctorGetUserStatusIn doctorGetUserStatusIn
+    );
+    /**
+     * 	自动签名授权-请求接口
+     * @param selfSignRequestInBaseIn
+     * @return
+     */
+    @RequestLine("POST /am/v2/selfSign/request")
+    SelfSignRequestOut selfSignRequest(
+            BaseIn<SelfSignRequestIn> selfSignRequestInBaseIn
     );
 
 

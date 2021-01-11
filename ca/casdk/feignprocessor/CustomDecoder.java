@@ -2,8 +2,10 @@ package com.wjj.application.facade.ca.casdk.feignprocessor;
 
 import com.alibaba.fastjson.JSON;
 import com.wjj.application.facade.ca.casdk.common.code.ResCode;
+import com.wjj.application.facade.ca.casdk.config.CaConfig;
 import com.wjj.application.facade.ca.casdk.exception.CaResStatusException;
 import com.wjj.application.facade.ca.casdk.exception.CaResponseException;
+import com.wjj.application.facade.ca.casdk.util.CaUtils;
 import com.wjj.application.facade.ca.casdk.vo.out.BaseOut;
 import feign.Response;
 import feign.codec.Decoder;
@@ -16,7 +18,13 @@ import java.lang.reflect.Type;
 
 public class CustomDecoder implements Decoder {
 
+    private CaConfig caConfig;
+
     private final static Logger logger = LoggerFactory.getLogger(CustomDecoder.class);
+
+    public CustomDecoder(CaConfig caConfig) {
+        this.caConfig = caConfig;
+    }
 
     @Override
     public Object decode(Response response, Type type) throws IOException {
@@ -33,12 +41,16 @@ public class CustomDecoder implements Decoder {
             while ((nowByte = reader.read()) != -1) {
                 resText.append((char) nowByte);
             }
-            logger.debug("ca response body: {}", resText);
+            logger.info("ca response body: {}", resText);
             Object resObject = JSON.parseObject(resText.toString(), type);
             if (resObject instanceof BaseOut) {
                 BaseOut baseOut = (BaseOut) resObject;
                 // 响应码为不成功
                 if (!ResCode.SUCCESS.getStatus().equals(baseOut.getStatus())) {
+                    if(ResCode.ACCESS_TOKEN_ERROR.getStatus().equals(baseOut.getStatus())){
+                        // token错误,清理token
+                        CaUtils.getAccessToken(caConfig, true);
+                    }
                     throw new CaResStatusException(baseOut);
                 }
             }

@@ -27,7 +27,7 @@ public class CaSdk {
 //        return HystrixFeign.builder()
         return Feign.builder()
                 .encoder(new CustomEncoder(caConfig))
-                .decoder(new CustomDecoder())
+                .decoder(new CustomDecoder(caConfig))
                 .requestInterceptor(new CustomInterceptor(caConfig))
 //                .client(new OkHttpClient((new okhttp3.OkHttpClient.Builder()).proxy(new Proxy(Proxy.Type.HTTP, new InetSocketAddress("127.0.0.1", 8889))).build()))
                 .client(new OkHttpClient())

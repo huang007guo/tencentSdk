@@ -37,4 +37,8 @@ public class CaConfig {
     // 二维码签名的跳转地址
     @Value("${signQRCodeUrlRedirectUrl}")
     private String signQRCodeUrlRedirectUrl;
+
+    // 二维码签名的跳转地址
+    @Value("${selfSignRequestNotifyUrl}")
+    private String selfSignRequestNotifyUrl;
 }

@@ -34,7 +34,7 @@ public class CallbackOut{
      * @return
      */
     public static CallbackOut fail(String msg){
-        return new CallbackOut(ResCode.fail.getStatus(), msg);
+        return new CallbackOut(ResCode.FAIL.getStatus(), msg);
     }
 
     /**
@@ -42,7 +42,7 @@ public class CallbackOut{
      * @return
      */
     public static CallbackOut fail(){
-        return fail(ResCode.fail.getMessage());
+        return fail(ResCode.FAIL.getMessage());
     }
 
     public String getStatus() {
