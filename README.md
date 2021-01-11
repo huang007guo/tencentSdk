@@ -1,11 +1,13 @@
 # tencentSdk
 腾讯云sdk - imsdk vodsdk livesdk imagesdk (基于openfeign)
 
+## maven依赖:
+
 ```xml
   <properties>
 		<feign.version>10.0.1</feign.version>
 	</properties>
-    <!-- feign -->
+    <!-- openFeign -->
 		<dependency>
 			<groupId>io.github.openfeign</groupId>
 			<artifactId>feign-core</artifactId>
