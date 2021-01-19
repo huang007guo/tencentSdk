@@ -5,18 +5,23 @@ import com.wjj.application.facade.ca.casdk.vo.in.BaseIn;
 /**
  * 签名状态通知接口
  *
- * urId	String	是	处方ID	2015120417541766
- * uniqueId	String	是	医网信处方唯一标识
- * status	int	是	签名订单状态
- * 2已签名
- * 6拒绝签名
- * 7签名订单已过期删除
- * 9已签名订单作废
- * signedData	String	否	处方哈希的 P7签名（仅在签名成功时回调）
- * signedPdfBase64	String	否	pdf文件流（base64编码，（仅在pdf签名成功状态时回调））
- * reason	String	否	拒绝签名原因（仅在拒绝签名状态时回调）
- * deleteTime	String	否	作废时间（仅在作废状态时回调），yyyy-MM-dd HH:mm:ss
- * openId	String	是	签名医师openId
+ openId	String	是	医网信医师唯一标识
+ phoneNum	String	是	用户手机号
+ process	String	是	用户同步状态
+ 0：身份审核通过
+ 1：证书签发
+ 2：设置签章
+ 3：用户注销
+ 4：申请拒绝
+ 5：用户停用
+ 6：修改手机号
+ 7：用户启用
+ time	String	是	操作时间，yyyy-MM-dd HH:mm:ss
+ note	String	否	审核拒绝原因/证书信息	当拒绝时或证书签发时
+ stamp	String	否	仅当process为2时，会回调签章图片base64
+ stampStatus	String	否	仅当process为2时，会回调签章状态
+ 10：待审核
+ 11：签章审核通过
  * @author hank
  * @since 2020/12/25 0025 下午 14:23
  */
@@ -85,6 +90,19 @@ public class DoctorStatusCallbackIn extends BaseIn<DoctorStatusCallbackIn.Body> 
 
         public void setStampStatus(String stampStatus) {
             this.stampStatus = stampStatus;
+        }
+
+        @Override
+        public String toString() {
+            return "Body{" +
+                    "process='" + process + '\'' +
+                    ", phoneNum='" + phoneNum + '\'' +
+                    ", time='" + time + '\'' +
+                    ", openId='" + openId + '\'' +
+                    ", note='" + note + '\'' +
+                    ", stamp='" + stamp + '\'' +
+                    ", stampStatus='" + stampStatus + '\'' +
+                    '}';
         }
     }
 }

@@ -60,4 +60,12 @@ public class CallbackOut{
     public void setMessage(String message) {
         this.message = message;
     }
+
+    @Override
+    public String toString() {
+        return "CallbackOut{" +
+                "status='" + status + '\'' +
+                ", message='" + message + '\'' +
+                '}';
+    }
 }

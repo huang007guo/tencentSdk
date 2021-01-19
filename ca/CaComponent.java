@@ -1,26 +1,19 @@
 package com.wjj.application.facade.ca;
 
 import com.alibaba.fastjson.JSON;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.additional.update.impl.LambdaUpdateChainWrapper;
 import com.wjj.application.bo.patient.PatientFileExtendFullBo;
 import com.wjj.application.common.enums.*;
-import com.wjj.application.common.tuple.Tuple;
-import com.wjj.application.constant.consultation.ConsultationBillConst;
 import com.wjj.application.constant.medicalhistory.MedicalHistoryConst;
-import com.wjj.application.constant.system.SysUserConst;
-import com.wjj.application.dto.MessageSmsCommonDTO;
-import com.wjj.application.dto.conversation.ConversationRecordDTO;
 import com.wjj.application.dto.medicalhistory.PrescriptionPharmacistAuditDTO;
 import com.wjj.application.entity.ca.CaSignCallBackInfo;
-import com.wjj.application.entity.consultation.ConsultationBill;
 import com.wjj.application.entity.employee.Employee;
 import com.wjj.application.entity.medicalhistory.MedicalHistory;
 import com.wjj.application.entity.medicalhistory.MedicalHistoryPrescription;
 import com.wjj.application.entity.medicalhistory.MedicalHistoryPrescriptionChineseList;
 import com.wjj.application.entity.medicalhistory.MedicalHistoryPrescriptionGenericList;
-import com.wjj.application.entity.patient.PatientFileExtend;
 import com.wjj.application.entity.user.SysUser;
-import com.wjj.application.eventcenter.event.medicalhistory.MedicalHistorySubmitDoneEvent;
 import com.wjj.application.exception.CommonException;
 import com.wjj.application.facade.ca.casdk.CaFeignClient;
 import com.wjj.application.facade.ca.casdk.common.CaConst;
@@ -40,15 +33,11 @@ import com.wjj.application.facade.ca.casdk.vo.out.RecipeSynOut;
 import com.wjj.application.facade.ca.casdk.vo.out.SelfSignGetGrantResultOut;
 import com.wjj.application.facade.ca.casdk.vo.out.callback.CallbackOut;
 import com.wjj.application.facade.medicalhistory.MedicalHistoryComponent;
-import com.wjj.application.feign.MessageFeignClient;
 import com.wjj.application.response.ReturnCode;
 import com.wjj.application.service.SysUserService;
 import com.wjj.application.service.bgmanage.SaasCommonConfigurationService;
 import com.wjj.application.service.ca.CaSignCallBackInfoService;
-import com.wjj.application.service.consultation.ConsultationBillService;
-import com.wjj.application.service.conversation.ConversationRecordService;
 import com.wjj.application.service.employee.EmployeeService;
-import com.wjj.application.service.im.ImConsultationContentService;
 import com.wjj.application.service.medicalhistory.MedicalHistoryPrescriptionService;
 import com.wjj.application.service.medicalhistory.MedicalHistoryService;
 import com.wjj.application.service.patient.PatientFileService;
@@ -56,7 +45,6 @@ import com.wjj.application.service.reminder.ReminderService;
 import com.wjj.application.util.BeanMapperUtil;
 import com.wjj.application.vo.bgmanage.SaasCommonConfigurationVO;
 import com.wjj.application.vo.ca.SelfSignRequestInVO;
-import com.wjj.application.vo.conversation.ConverSationTemplateVO;
 import com.wjj.application.vo.medicalhistory.*;
 import feign.codec.DecodeException;
 import lombok.extern.slf4j.Slf4j;
@@ -70,7 +58,6 @@ import org.springframework.transaction.support.TransactionSynchronizationAdapter
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
-import java.text.SimpleDateFormat;
 import java.util.*;
 
 /**
@@ -126,13 +113,8 @@ public class CaComponent {
      */
     public void recipeSynToCa(MedicalHistory medicalHistory, Integer platType) {
 
-        // 没有提交的病历,或者不是视频问诊
-        if(
-            // 1.没有病历
-            medicalHistory == null || !MedicalHistoryConst.MEDICAL_HISTORY_STATUS_SUBMIT.equals(medicalHistory.getStatus())
-            // 2.不是视频问诊
-            || !ConsultationBillConst.CONSULTATION_WAY_REMOTE.equals(medicalHistory.getConsultationWay())
-        ){
+        // 不需要签名的直接返回
+        if(!medicalHistoryService.isNeedCaSign(medicalHistory)){
             return;
         }
         // 没有处方
@@ -259,6 +241,7 @@ public class CaComponent {
      */
     public boolean getMedicalHistoryDoctorSignStatus(Long medicalHistoryId) {
         MedicalHistoryPrescription medicalHistoryPrescription = medicalHistoryPrescriptionService.lambdaQuery()
+                .select(MedicalHistoryPrescription::getId)
                 .eq(MedicalHistoryPrescription::getMedicalHistoryId, medicalHistoryId)
                 .eq(MedicalHistoryPrescription::getStatus, MedicalHistoryConst.PRESCRIPTION_STATUS_SUBMIT)
                 .ne(MedicalHistoryPrescription::getCaUniqueId, "")
@@ -480,7 +463,7 @@ public class CaComponent {
                             .eq(MedicalHistoryPrescription::getCaSignOpenid, openId)
                             .eq(MedicalHistoryPrescription::getId, medicalHistoryPrescription.getId())
                             .eq(MedicalHistoryPrescription::getStatus, MedicalHistoryConst.PRESCRIPTION_STATUS_SUBMIT)
-                            .set(MedicalHistoryPrescription::getCaSignImg, sysUser.getCaSignImg())
+                            .set(MedicalHistoryPrescription::getCaSignImg, sysUserService.getOrSetCaSignImg(sysUser))
                             // 更新药师审核状态,处方状态
                             .set(MedicalHistoryPrescription::getPharmacistAuditStatus, MedicalHistoryConst.PRESCRIPTION_STATUS_WAIT_AUDIT)
                             .set(MedicalHistoryPrescription::getStatus, MedicalHistoryConst.PRESCRIPTION_STATUS_WAIT_AUDIT);
@@ -512,19 +495,29 @@ public class CaComponent {
                                 .set(MedicalHistoryPrescription::getCaPharmacistUserId, assignPharmacistSysUser.getId())
                                 .set(MedicalHistoryPrescription::getCaPharmacistUserName, assignPharmacistSysUser.getUserName())
                                 .set(MedicalHistoryPrescription::getPharmacistAssignTime, new Date());
-                        SaasCommonConfigurationVO saasCommonConfigurationVO = saasCommonConfigurationService.querySaasCommonConfiguration();
-                        // 自动审核开启
-                        if(saasCommonConfigurationVO != null && (new Integer(10)).equals(saasCommonConfigurationVO.getPharmacistAutoAuditConfig())){
-                            // 开启了自动签名
-                            if(TrueOrFalseEnum.TRUE.getType().equals(assignPharmacistSysUser.getCaIsAutoSign())){
-                                // 请求Ca二次判断是否开启了
-                                SelfSignGetGrantResultOut selfSignGetGrantResultOut = caFeignClient.selfSignGetGrantResult(new BaseIn<>(new SelfSignGetGrantResultIn(sysUser.getCaOpenId(), null)));
-                                if(selfSignGetGrantResultOut.getData()){
-                                    // 自动审核通过,提交数据到ca自动签名
-                                    pharmacistAuditPrescriptionPass(medicalHistoryPrescription);
+                        // 事务完成后判断是否需要自动审核
+                        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronizationAdapter() {
+                            @Override
+                            public void afterCommit() {
+                                MedicalHistoryPrescription medicalHistoryPrescription1 = medicalHistoryPrescriptionService.getById(medicalHistoryPrescription.getId());
+                                if(
+                                        MedicalHistoryConst.PRESCRIPTION_STATUS_WAIT_AUDIT.equals(medicalHistoryPrescription1.getStatus()) &&
+                                                medicalHistoryPrescription1.getCaPharmacistUserId() != null &&
+                                                StringUtils.isNotBlank(medicalHistoryPrescription1.getCaPharmacistSignOpenid())
+                                ) {
+                                    SaasCommonConfigurationVO saasCommonConfigurationVO = saasCommonConfigurationService.querySaasCommonConfiguration();
+                                    // 自动审核开启
+                                    if (saasCommonConfigurationVO != null && (new Integer(10)).equals(saasCommonConfigurationVO.getPharmacistAutoAuditConfig())) {
+                                        // 请求Ca二次判断是否开启了
+                                        SelfSignGetGrantResultOut selfSignGetGrantResultOut = caFeignClient.selfSignGetGrantResult(new BaseIn<>(new SelfSignGetGrantResultIn(medicalHistoryPrescription1.getCaPharmacistSignOpenid(), null)));
+                                        if (selfSignGetGrantResultOut.getData()) {
+                                            // 自动审核通过,提交数据到ca自动签名
+                                            pharmacistAuditPrescriptionPass(medicalHistoryPrescription1);
+                                        }
+                                    }
                                 }
                             }
-                        }
+                        });
                     }
                     prescriptionLambdaUpdateChainWrapper.update();
                 }
@@ -534,19 +527,11 @@ public class CaComponent {
                 medicalHistoryService.lambdaUpdate()
                         .eq(MedicalHistory::getId, medicalHistory.getId())
                         // 签名章图片(最有一次的处方签名图片,就算用户没有设置签名图片签完名这里也会保存一个空字符以作为标记)
-                        .set(MedicalHistory::getCaSignImg, sysUser.getCaSignImg() == null ? "" : sysUser.getCaSignImg())
+                        .set(MedicalHistory::getCaSignImg, sysUserService.getOrSetCaSignImg(sysUser))
                         .update();
 
                 // 1.提交完成处理
                 medicalHistoryService.submitDoneProcess(medicalHistory);
-                // 2. 生成收费单(统一在: 重新提交, 药师审核完成, 废弃处方的地方激发)
-                // 3.事务提交完发送提交完成事件
-                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronizationAdapter() {
-                    @Override
-                    public void afterCommit() {
-                        MedicalHistorySubmitDoneEvent.publishEvent(Tuple.tuple(isFirst, medicalHistory, true));
-                    }
-                });
             }else{
                 // 药师签名的处方列表
                 List<MedicalHistoryPrescription> pharmacistSignPrescriptionList = medicalHistoryPrescriptionService.lambdaQuery()
@@ -563,7 +548,7 @@ public class CaComponent {
                         .set(MedicalHistoryPrescription::getPharmacistAuditTime, new Date())
                         .set(MedicalHistoryPrescription::getPharmacistAuditStatus, MedicalHistoryConst.PRESCRIPTION_STATUS_AUDIT_PASS)
                         .set(MedicalHistoryPrescription::getStatus, MedicalHistoryConst.PRESCRIPTION_STATUS_AUDIT_PASS)
-                        .set(MedicalHistoryPrescription::getCaPharmacistSignImg, sysUser.getCaSignImg())
+                        .set(MedicalHistoryPrescription::getCaPharmacistSignImg, sysUserService.getOrSetCaSignImg(sysUser))
                         .update()){
                     MedicalHistory medicalHistory = medicalHistoryService.getById(pharmacistSignPrescriptionList.get(0).getMedicalHistoryId());
                     medicalHistoryService.submitMedicalHistoryTriggerChangeConsultationBillStatusAndAutoGenerateChargeContent(
@@ -587,10 +572,19 @@ public class CaComponent {
             log.error("ca autoCaSignNotify fail 验签失败, autoSignCallbackIn:{}", JSON.toJSONString(autoSignCallbackIn));
             return CallbackOut.fail("验签失败");
         }
-        sysUserService.lambdaUpdate()
-                .eq(SysUser::getCaOpenId, autoSignCallbackIn.getBody().getOpenId())
-                .set(SysUser::getCaAuthStatus, Boolean.TRUE.equals(autoSignCallbackIn.getBody().getResult()) ? TrueOrFalseEnum.TRUE.getType() :  TrueOrFalseEnum.FALSE.getType())
-                .update();
+        List<SysUser> sysUsers = sysUserService.list(new LambdaQueryWrapper<SysUser>()
+                .eq(SysUser::getCaOpenId, autoSignCallbackIn.getBody().getOpenId()));
+        List<SysUser> sysUsersUpdate = new ArrayList<>(sysUsers.size());
+        for (SysUser sysUser : sysUsers) {
+            SysUser userUpdate = new SysUser();
+            userUpdate.setId(sysUser.getId());
+            userUpdate.setUpdateUser(sysUser.getUpdateUser() == null ? "系统操作" : sysUser.getUpdateUser());
+            userUpdate.setCaIsAutoSign(Boolean.TRUE.equals(autoSignCallbackIn.getBody().getResult()) ? TrueOrFalseEnum.TRUE.getType() :  TrueOrFalseEnum.FALSE.getType());
+            sysUsersUpdate.add(userUpdate);
+        }
+        if (CollectionUtils.isNotEmpty(sysUsersUpdate)) {
+            sysUserService.updateBatchById(sysUsersUpdate);
+        }
         return CallbackOut.success();
     }
 
