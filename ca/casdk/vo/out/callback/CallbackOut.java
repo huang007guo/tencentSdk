@@ -15,6 +15,12 @@ public class CallbackOut{
     private String status;
     private String message;
 
+    /**
+     * 默认构造器
+     */
+    public CallbackOut() {
+    }
+
     public CallbackOut(String status, String message) {
         this.status = status;
         this.message = message;

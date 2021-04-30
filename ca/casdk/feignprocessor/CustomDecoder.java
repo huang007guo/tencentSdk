@@ -41,8 +41,10 @@ public class CustomDecoder implements Decoder {
             while ((nowByte = reader.read()) != -1) {
                 resText.append((char) nowByte);
             }
-            logger.info("ca response body: {}", resText);
-            Object resObject = JSON.parseObject(resText.toString(), type);
+            String resToStr = resText.toString();
+            // stamp 太长日志你不打印
+            logger.info("ca response body: {}", resToStr.replaceFirst("\"stamp\":\"[^\"]*\"", "\"stamp\":\"?\""));
+            Object resObject = JSON.parseObject(resToStr, type);
             if (resObject instanceof BaseOut) {
                 BaseOut baseOut = (BaseOut) resObject;
                 // 响应码为不成功
